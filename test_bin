@@ -15,5 +15,5 @@ def wait():
     time.sleep(2)
 
 if __name__ == "__main__":
-	#  run()
-    wait()
+    run()
+    #  wait()
