@@ -52,49 +52,49 @@ SUBCOMMANDS:
 
 A simple example that should run as-is to showcase the main usage loop (*flask and python3 required*)
 
-- ```sh
-  # create a simple flask server daemon in a file named "FLASK_SERVER"
-  cat << EOT >> FLASK_SERVER
-  #!/usr/bin/python3
-  from flask import Flask
-  
-  app = Flask(__name__)
-  
-  @app.route("/")
-  def index():
-      return {"status": 200}
-  
-  if __name__ == "__main__":
-      app.run()
-  EOT
-  
-  # make the file executable
-  chmod +x FLASK_SERVER
-  
-  # start the process from an executable file
-  eggsecutor hatch FLASK_SERVER
-  > Hatching process "FLASK_SERVER" and starting to track...
-  > egg hatched, tracking process with pid: "3670"
-  
-  # check the process is healthy
-  eggsecutor list
-  > Process name    pid     status    
-  > -----------------------------------
-  > FLASK_SERVER    3670    Running
-  
-  # once ready shut down the server by name (or pid)
-  # the following are equivalent
-  eggsecutor stop FLASK_SERVER
-  eggsecutor stop 3670
-  > stopping process with pid: 3670
-  
-  # or, if you want to stop ALL running processes being tracked
-  eggsecutor clear
-  ```
+```sh
+# create a simple flask server daemon in a file named "FLASK_SERVER"
+cat << EOT >> FLASK_SERVER
+#!/usr/bin/python3
+from flask import Flask
 
-# Customization 
+app = Flask(__name__)
 
-By design, `eggsecutor` is meant to be a low-maintenance (and therefore, low-option) tool. 
+@app.route("/")
+def index():
+  return {"status": 200}
+
+if __name__ == "__main__":
+  app.run()
+EOT
+
+# make the file executable
+chmod +x FLASK_SERVER
+
+# start the process from an executable file
+eggsecutor hatch FLASK_SERVER
+> Hatching process "FLASK_SERVER" and starting to track...
+> egg hatched, tracking process with pid: "3670"
+
+# check the process is healthy
+eggsecutor list
+> Process name    pid     status
+> -----------------------------------
+> FLASK_SERVER    3670    Running
+
+# once ready shut down the server by name (or pid)
+# the following are equivalent
+eggsecutor stop FLASK_SERVER
+eggsecutor stop 3670
+> stopping process with pid: 3670
+
+# or, if you want to stop ALL running processes being tracked
+eggsecutor clear
+```
+
+# Customization
+
+By design, `eggsecutor` is meant to be a low-maintenance (and therefore, low-option) tool.
 
 The only user-defined variable is the location of the JSON state tracking file, which defaults to
 
