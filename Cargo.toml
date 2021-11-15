@@ -4,6 +4,10 @@ version = "1.0.0"
 edition = "2018"
 license = "MIT OR Apache-2.0"
 description = "A simple and lightweight stateful daemon tracking CLI"
+readme = "README.md"
+repository = "https://github.com/astherath/eggsecutor"
+keywords = ["daemon", "task-manager"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
