@@ -1,3 +1,7 @@
+// our specific clap version doesn't use the new error syntax,
+// but the beta version does, so we technically use the
+// deprecated functions to the same effect.
+#![allow(deprecated)]
 extern crate clap;
 extern crate shellexpand;
 
@@ -6,15 +10,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::{self};
 
 use std::fs::{self, File};
-use std::io;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::{env, io};
 
 fn main() {
     const PROGRAM_TITLE: &str = "eggsecutor";
     const VERSION: &str = "1.0";
-    const AUTHOR: &str = "Felipe A. <farceriv@gmail.com>";
-    const ABOUT: &str = "A background process task manager";
+    const AUTHOR: &str = "astherath <me@felipearce.dev>";
+    const ABOUT: &str = "A friendly background process task manager";
 
     let mut app = App::new(PROGRAM_TITLE)
         .version(VERSION)
@@ -137,7 +141,7 @@ fn hatch_subprocess_from_file(filename: &str) -> io::Result<()> {
         status: ProcessStatus::Running,
     };
 
-    add_process_to_state_tracker(child_info)?;
+    add_process_to_state_tracker(child_info).unwrap_or_else(|err| handle_process_boot_error(err));
 
     println!(r#"egg hatched, tracking process with pid: "{}""#, &pid);
 
@@ -168,7 +172,12 @@ impl ProcessInfo {
 }
 
 fn get_state_file_path() -> String {
-    shellexpand::tilde("~/.eggsecutor.state").to_string()
+    let path_string = match env::var("EGGSECUTOR_STATE_FILE") {
+        Ok(state_path) => state_path,
+        Err(_) => "~/.eggsecutor.state".to_string(),
+    };
+
+    shellexpand::tilde(&path_string).to_string()
 }
 
 fn add_process_to_state_tracker(process_info: ProcessInfo) -> io::Result<()> {
@@ -198,7 +207,7 @@ fn write_processes_to_state_file(processes: Vec<ProcessInfo>) -> io::Result<()> 
 
 fn print_list_of_processes() -> io::Result<()> {
     let processes = get_processes_from_state_file()
-        .unwrap_or_else(|err| handle_no_file_data_error(err))
+        .unwrap_or_else(|_| handle_no_file_data_error())
         .into_iter()
         .filter(|process| is_process_alive(&process.pid).unwrap())
         .collect();
@@ -325,7 +334,7 @@ fn is_process_alive(pid: &str) -> io::Result<bool> {
 fn handle_spawn_error(err_reason: io::Error) -> ! {
     Error::with_description(
         format!(
-            "could not hatch subprocess: binary could not be executed. Details: {}",
+            "could not hatch process: binary could not be executed. Details: {}",
             err_reason
         ),
         ErrorKind::Io,
@@ -333,12 +342,20 @@ fn handle_spawn_error(err_reason: io::Error) -> ! {
     .exit();
 }
 
-fn handle_no_file_data_error(err_reason: io::Error) -> ! {
+fn handle_process_boot_error(err_reason: io::Error) -> ! {
     Error::with_description(
         format!(
-            "no state file data found. Add a process to track first. Details: {}",
+            "process abruptly exited after being hatched, details: {}",
             err_reason
         ),
+        ErrorKind::Io,
+    )
+    .exit();
+}
+
+fn handle_no_file_data_error() -> ! {
+    Error::with_description(
+        format!("no state file data found. Add a process to track first",),
         ErrorKind::Io,
     )
     .exit();
