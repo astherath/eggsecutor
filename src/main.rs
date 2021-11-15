@@ -306,18 +306,6 @@ fn clear_all_processes_from_file() -> io::Result<()> {
     Ok(())
 }
 
-fn kill_process_by_pid(pid: &str) -> io::Result<()> {
-    let command = "kill";
-    Command::new(command)
-        .arg("-9")
-        .arg(pid)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()?
-        .wait()?;
-    Ok(())
-}
-
 fn is_process_alive(pid: &str) -> io::Result<bool> {
     let command = "kill";
     match Command::new(command)
