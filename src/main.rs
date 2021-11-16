@@ -5,7 +5,7 @@
 extern crate clap;
 extern crate shellexpand;
 
-use clap::{App, AppSettings, Arg, Error, ErrorKind};
+use clap::{App, AppSettings, Error, ErrorKind};
 use serde::{Deserialize, Serialize};
 use serde_json::{self};
 
@@ -13,6 +13,7 @@ use std::fs::{self, File};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::{env, io};
+mod subcommands;
 
 fn main() {
     const PROGRAM_TITLE: &str = "eggsecutor";
@@ -26,16 +27,9 @@ fn main() {
         .about(ABOUT)
         .setting(AppSettings::ArgRequiredElseHelp);
 
-    let subcommand_list = [
-        get_hatch_subcommand(),
-        get_list_processes_subcommand(),
-        get_stop_process_subcommand(),
-        get_clear_state_subcommand(),
-    ];
-    for subcommand in subcommand_list {
-        app = app.subcommand(subcommand);
-    }
-
+    app = subcommands::get_all_subcommands()
+        .into_iter()
+        .fold(app, |acc, subcommand| acc.subcommand(subcommand));
     let matches = app.get_matches();
 
     // get matches and execute commands here
@@ -56,82 +50,6 @@ fn main() {
             stop_and_clear_all_processes().unwrap();
         }
     }
-}
-
-fn get_clear_state_subcommand<'a>() -> App<'a> {
-    const SUBCOMMAND_NAME: &str = "clear";
-    const ABOUT: &str = "stops all of the processes being tracked and clears the tracking list";
-
-    App::new(SUBCOMMAND_NAME).about(ABOUT).arg(
-        Arg::new("only-clear")
-            .long("--only-clear")
-            .about("don't stop any processes, just clear the tracking list"),
-    )
-}
-
-mod subcommand_tests {
-    use super::*;
-    mod clear_subcommand {
-        use super::get_clear_state_subcommand;
-
-        #[test]
-        fn subcommand_should_return_app_instance() {
-            let command = get_clear_state_subcommand();
-            let expected_name = "clear";
-            let expected_about =
-                "stops all of the processes being tracked and clears the tracking list";
-            assert_eq!(command.get_name(), expected_name);
-            assert_eq!(command.get_about().unwrap(), expected_about);
-        }
-
-        #[test]
-        fn subcommand_should_have_args() {
-            let command = get_clear_state_subcommand();
-            let expected_arg_name = "only-clear";
-            let expected_arg_about = "don't stop any processes, just clear the tracking list";
-            let arg = command
-                .get_arguments()
-                .into_iter()
-                .filter(|x| x.get_name() == expected_arg_name)
-                .next()
-                .expect("arg iterator should return valid argument");
-            assert_eq!(arg.get_name(), expected_arg_name);
-            assert_eq!(arg.get_about().unwrap(), expected_arg_about);
-        }
-    }
-}
-
-fn get_stop_process_subcommand<'a>() -> App<'a> {
-    const SUBCOMMAND_NAME: &str = "stop";
-    const ABOUT: &str = "stop a process by name or pid";
-
-    App::new(SUBCOMMAND_NAME).about(ABOUT).arg(
-        Arg::new("process identifier")
-            .about("Name or pid of process to stop")
-            .required(true)
-            .takes_value(true)
-            .value_name("PROCESS_IDENTIFIER"),
-    )
-}
-
-fn get_list_processes_subcommand<'a>() -> App<'a> {
-    const SUBCOMMAND_NAME: &str = "list";
-    const ABOUT: &str = "list all managed processes";
-
-    App::new(SUBCOMMAND_NAME).about(ABOUT)
-}
-
-fn get_hatch_subcommand<'a>() -> App<'a> {
-    const SUBCOMMAND_NAME: &str = "hatch";
-    const ABOUT: &str = "start managing a binary process";
-
-    App::new(SUBCOMMAND_NAME).about(ABOUT).arg(
-        Arg::new("file")
-            .about("Sets the input file to use")
-            .required(true)
-            .takes_value(true)
-            .value_name("INPUT"),
-    )
 }
 
 fn process_file_input_for_hatch_subcommand(filename: &str) -> io::Result<()> {
