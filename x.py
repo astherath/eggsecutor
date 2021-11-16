@@ -20,8 +20,18 @@ def clean():
 def test():
     """runs tests and generates cov file(s)"""
     cmd = ";".join([
-        'RUSTFLAGS="-Z instrument-coverage"',
-        'LLVM_PROFILE_FILE="json5format-%m.profraw"', 'cargo test'
+        "grcov",
+        ".",
+        "--binary-path",
+        "./target/debug",
+        "-s",
+        ".",
+        "-t",
+        "html",
+        "--branch",
+        "--ignore-not-existing",
+        "-o",
+        "./coverage/",
     ])
     os.system(cmd)
 
