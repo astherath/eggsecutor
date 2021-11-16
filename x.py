@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+from pathlib import Path
 import click
 
 
@@ -14,6 +15,12 @@ def clean():
     files = [x for x in os.listdir() if x.endswith("profraw")]
     for file_path in files:
         os.remove(file_path)
+
+
+@cli.command()
+def view():
+    """views the geenrated html files in default browser"""
+    os.system(" ".join(["open", str(Path("coverage/src/index.html"))]))
 
 
 @cli.command()
