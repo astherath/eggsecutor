@@ -26,7 +26,7 @@ def view():
 @cli.command()
 def test():
     """runs tests and generates cov file(s)"""
-    cmd = ";".join([
+    cmd = " ".join([
         "grcov",
         ".",
         "--binary-path",
