@@ -73,10 +73,7 @@ fn check_if_file_is_valid(filename: &str) -> Result<(), Error> {
 }
 
 fn hatch_subprocess_from_file(filename: &str) -> io::Result<()> {
-    println!(
-        r#"Hatching process "{}" and starting to track..."#,
-        filename
-    );
+    output_display::print_pre_hatch_message(filename);
     let bin_path = format!("./{}", filename);
     let child = Command::new(bin_path)
         .stdout(Stdio::null())
@@ -339,4 +336,32 @@ fn get_display_header_string() -> String {
         "{:<15} {:<7} {:<10}\n{:-<35}",
         "Process name", "pid", "status", ""
     )
+}
+
+mod output_display {
+
+    pub fn print_pre_hatch_message(filename: &str) {
+        println!("{}", get_pre_hatch_message_string(filename));
+    }
+
+    fn get_pre_hatch_message_string(filename: &str) -> String {
+        format!(
+            r#"Hatching process "{}" and starting to track..."#,
+            filename
+        )
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        #[test]
+        fn pre_hatch_mesage_ok() {
+            let filename = "test-filename";
+            let message = get_pre_hatch_message_string(filename);
+            assert!(message.contains(filename));
+
+            // printing the message should work without error as well
+            print_pre_hatch_message(filename);
+        }
+    }
 }
