@@ -69,6 +69,38 @@ fn get_clear_state_subcommand<'a>() -> App<'a> {
     )
 }
 
+mod subcommand_tests {
+    use super::*;
+    mod clear_subcommand {
+        use super::get_clear_state_subcommand;
+
+        #[test]
+        fn subcommand_should_return_app_instance() {
+            let command = get_clear_state_subcommand();
+            let expected_name = "clear";
+            let expected_about =
+                "stops all of the processes being tracked and clears the tracking list";
+            assert_eq!(command.get_name(), expected_name);
+            assert_eq!(command.get_about().unwrap(), expected_about);
+        }
+
+        #[test]
+        fn subcommand_should_have_args() {
+            let command = get_clear_state_subcommand();
+            let expected_arg_name = "only-clear";
+            let expected_arg_about = "don't stop any processes, just clear the tracking list";
+            let arg = command
+                .get_arguments()
+                .into_iter()
+                .filter(|x| x.get_name() == expected_arg_name)
+                .next()
+                .expect("arg iterator should return valid argument");
+            assert_eq!(arg.get_name(), expected_arg_name);
+            assert_eq!(arg.get_about().unwrap(), expected_arg_about);
+        }
+    }
+}
+
 fn get_stop_process_subcommand<'a>() -> App<'a> {
     const SUBCOMMAND_NAME: &str = "stop";
     const ABOUT: &str = "stop a process by name or pid";
