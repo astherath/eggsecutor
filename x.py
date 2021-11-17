@@ -28,6 +28,8 @@ def view():
 @cli.command()
 def test():
     """runs tests and generates cov file(s)"""
+    # check flag is set before starting
+    os.system('export RUSTFLAGS="-Zinstrument-coverage"')
     cmd = " ".join([
         "grcov",
         ".",
