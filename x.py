@@ -26,26 +26,12 @@ def view():
 
 
 @cli.command()
-def generate_cov():
+def cov():
     """generates cov file(s)"""
     # check flag is set before starting
     os.system('export RUSTFLAGS="-Zinstrument-coverage"')
-    cmd = " ".join([
-        "grcov",
-        ".",
-        "--binary-path",
-        "./target/debug",
-        "-s",
-        ".",
-        "-t",
-        "html",
-        "--branch",
-        "--ignore-not-existing",
-        "-o",
-        "./coverage/",
-    ])
-    os.system(cmd)
 
+    run_grcov_cmd()
     append_cov_data_to_file()
 
 
@@ -56,6 +42,12 @@ def test():
     os.system('export RUSTFLAGS="-Zinstrument-coverage"')
     test_cmd = " ".join(["cargo", "test"])
     os.system(test_cmd)
+
+    run_grcov_cmd()
+    append_cov_data_to_file()
+
+
+def run_grcov_cmd():
     cmd = " ".join([
         "grcov",
         ".",
@@ -71,8 +63,6 @@ def test():
         "./coverage/",
     ])
     os.system(cmd)
-
-    append_cov_data_to_file()
 
 
 def get_cov_data_path() -> str:
@@ -116,10 +106,6 @@ def get_cov_percentage() -> str:
     with open(generated_cov_path, "r") as f:
         data = json.loads(f.read())
     return data["message"]
-
-
-def create_cov_file_if_not_exists():
-    pass
 
 
 if __name__ == "__main__":
