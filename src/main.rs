@@ -336,14 +336,32 @@ mod errors {
         use super::*;
         use std::io;
 
+        struct ExpectedErrData<'a> {
+            msg: &'a str,
+            kind: clap::ErrorKind,
+        }
+
+        fn check_err_matches_spec(check_data: ExpectedErrData, err_factory: fn() -> clap::Error) {
+            let err_msg = check_data.msg;
+            let error_kind = check_data.kind;
+
+            let clap_err = err_factory();
+
+            assert!(clap_err.to_string().contains(err_msg));
+            assert_eq!(clap_err.kind, error_kind);
+        }
+
         #[test]
         fn process_boot_error_should_return_io_clap_err() {
             let err_msg = "test io error";
+            let kind = clap::ErrorKind::Io;
             let io_err = io::Error::new(io::ErrorKind::Other, err_msg);
-            let clap_err = get_process_boot_error(io_err);
 
-            assert!(clap_err.to_string().contains(err_msg));
-            assert_eq!(clap_err.kind, clap::ErrorKind::Io);
+            let err_check_data = ExpectedErrData { kind, msg: err_msg };
+
+            let clap_err_fn = move || get_process_boot_error(io_err);
+
+            check_err_matches_spec(err_check_data, clap_err_fn);
         }
 
         #[test]
