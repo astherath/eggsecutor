@@ -304,6 +304,10 @@ mod errors {
     use std::io;
 
     pub fn handle_no_such_process_error(process_info: &str) -> ! {
+        get_no_such_process_error(process_info).exit();
+    }
+
+    fn get_no_such_process_error(process_info: &str) -> Error {
         Error::with_description(
             format!(
                 r#"couldn not stop process. no matching process with identifier: "{}""#,
@@ -311,7 +315,6 @@ mod errors {
             ),
             ErrorKind::InvalidValue,
         )
-        .exit();
     }
 
     pub fn handle_process_boot_error(err_reason: io::Error) -> ! {
@@ -331,14 +334,24 @@ mod errors {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use std::io::ErrorKind;
+        use std::io;
 
         #[test]
         fn process_boot_error_should_return_io_clap_err() {
             let err_msg = "test io error";
-            let err_reason = io::Error::new(ErrorKind::Other, err_msg);
-            let clap_err = get_process_boot_error(err_reason);
+            let io_err = io::Error::new(io::ErrorKind::Other, err_msg);
+            let clap_err = get_process_boot_error(io_err);
+
             assert!(clap_err.to_string().contains(err_msg));
+            assert_eq!(clap_err.kind, clap::ErrorKind::Io);
+        }
+
+        #[test]
+        fn no_such_process_error_should_return_invalid_value_clap_err() {
+            let process_err_msg = "test process not found error";
+            let clap_err = get_no_such_process_error(process_err_msg);
+            assert!(clap_err.to_string().contains(process_err_msg));
+            assert_eq!(clap_err.kind, clap::ErrorKind::InvalidValue);
         }
     }
 }

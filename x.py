@@ -41,10 +41,11 @@ def test():
     # check flag is set before starting
     os.system('export RUSTFLAGS="-Zinstrument-coverage"')
     test_cmd = " ".join(["cargo", "test"])
-    os.system(test_cmd)
+    exit_code = os.system(test_cmd)
 
-    run_grcov_cmd()
-    append_cov_data_to_file()
+    if exit_code == 0:
+        run_grcov_cmd()
+        append_cov_data_to_file()
 
 
 def run_grcov_cmd():
