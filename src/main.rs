@@ -90,7 +90,7 @@ fn hatch_subprocess_from_file(filename: &str) -> io::Result<()> {
 
     add_process_to_state_tracker(child_info).unwrap_or_else(|err| handle_process_boot_error(err));
 
-    println!(r#"egg hatched, tracking process with pid: "{}""#, &pid);
+    output_display::print_post_hatch_message(pid);
 
     Ok(())
 }
@@ -322,7 +322,7 @@ fn handle_no_such_process_error(process_info: &str) -> ! {
 fn get_display_output_str_for_processes(processes: Vec<ProcessInfo>) -> String {
     format!(
         "{}\n{}",
-        get_display_header_string(),
+        output_display::get_display_header_string(),
         processes
             .iter()
             .map(|x| x.to_console_string())
@@ -331,17 +331,25 @@ fn get_display_output_str_for_processes(processes: Vec<ProcessInfo>) -> String {
     )
 }
 
-fn get_display_header_string() -> String {
-    format!(
-        "{:<15} {:<7} {:<10}\n{:-<35}",
-        "Process name", "pid", "status", ""
-    )
-}
-
 mod output_display {
+
+    pub fn get_display_header_string() -> String {
+        format!(
+            "{:<15} {:<7} {:<10}\n{:-<35}",
+            "Process name", "pid", "status", ""
+        )
+    }
 
     pub fn print_pre_hatch_message(filename: &str) {
         println!("{}", get_pre_hatch_message_string(filename));
+    }
+
+    pub fn print_post_hatch_message(pid: u32) {
+        println!("{}", get_post_hatch_message_string(pid));
+    }
+
+    fn get_post_hatch_message_string(pid: u32) -> String {
+        format!(r#"egg hatched, tracking process with pid: "{}""#, &pid)
     }
 
     fn get_pre_hatch_message_string(filename: &str) -> String {
@@ -354,6 +362,13 @@ mod output_display {
     #[cfg(test)]
     mod tests {
         use super::*;
+
+        #[test]
+        fn display_header_string_should_be_non_empty() {
+            let msg = get_display_header_string();
+            assert!(msg.len() > 0);
+        }
+
         #[test]
         fn pre_hatch_mesage_ok() {
             let filename = "test-filename";
@@ -362,6 +377,16 @@ mod output_display {
 
             // printing the message should work without error as well
             print_pre_hatch_message(filename);
+        }
+
+        #[test]
+        fn post_hatch_message_ok() {
+            let pid = 1234;
+            let message = get_post_hatch_message_string(pid);
+            assert!(message.contains(&pid.to_string()));
+
+            // printing the message should work without error as well
+            print_post_hatch_message(pid);
         }
     }
 }
