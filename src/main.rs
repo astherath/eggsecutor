@@ -13,6 +13,7 @@ use std::fs::{self, File};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::{env, io};
+mod output_display;
 mod subcommands;
 
 fn main() {
@@ -102,7 +103,7 @@ enum ProcessStatus {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct ProcessInfo {
+pub struct ProcessInfo {
     name: String,
     pid: String,
     status: ProcessStatus,
@@ -159,7 +160,7 @@ fn print_list_of_processes() -> io::Result<()> {
         .filter(|process| is_process_alive(&process.pid).unwrap())
         .collect();
 
-    let display_str_for_processes = get_display_output_str_for_processes(processes);
+    let display_str_for_processes = output_display::get_display_output_str_for_processes(processes);
     println!("{}", display_str_for_processes);
     Ok(())
 }
@@ -317,76 +318,4 @@ fn handle_no_such_process_error(process_info: &str) -> ! {
         ErrorKind::InvalidValue,
     )
     .exit();
-}
-
-fn get_display_output_str_for_processes(processes: Vec<ProcessInfo>) -> String {
-    format!(
-        "{}\n{}",
-        output_display::get_display_header_string(),
-        processes
-            .iter()
-            .map(|x| x.to_console_string())
-            .collect::<Vec<String>>()
-            .join("")
-    )
-}
-
-mod output_display {
-
-    pub fn get_display_header_string() -> String {
-        format!(
-            "{:<15} {:<7} {:<10}\n{:-<35}",
-            "Process name", "pid", "status", ""
-        )
-    }
-
-    pub fn print_pre_hatch_message(filename: &str) {
-        println!("{}", get_pre_hatch_message_string(filename));
-    }
-
-    pub fn print_post_hatch_message(pid: u32) {
-        println!("{}", get_post_hatch_message_string(pid));
-    }
-
-    fn get_post_hatch_message_string(pid: u32) -> String {
-        format!(r#"egg hatched, tracking process with pid: "{}""#, &pid)
-    }
-
-    fn get_pre_hatch_message_string(filename: &str) -> String {
-        format!(
-            r#"Hatching process "{}" and starting to track..."#,
-            filename
-        )
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-
-        #[test]
-        fn display_header_string_should_be_non_empty() {
-            let msg = get_display_header_string();
-            assert!(msg.len() > 0);
-        }
-
-        #[test]
-        fn pre_hatch_mesage_ok() {
-            let filename = "test-filename";
-            let message = get_pre_hatch_message_string(filename);
-            assert!(message.contains(filename));
-
-            // printing the message should work without error as well
-            print_pre_hatch_message(filename);
-        }
-
-        #[test]
-        fn post_hatch_message_ok() {
-            let pid = 1234;
-            let message = get_post_hatch_message_string(pid);
-            assert!(message.contains(&pid.to_string()));
-
-            // printing the message should work without error as well
-            print_post_hatch_message(pid);
-        }
-    }
 }
