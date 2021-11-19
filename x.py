@@ -26,10 +26,36 @@ def view():
 
 
 @cli.command()
+def generate_cov():
+    """generates cov file(s)"""
+    # check flag is set before starting
+    os.system('export RUSTFLAGS="-Zinstrument-coverage"')
+    cmd = " ".join([
+        "grcov",
+        ".",
+        "--binary-path",
+        "./target/debug",
+        "-s",
+        ".",
+        "-t",
+        "html",
+        "--branch",
+        "--ignore-not-existing",
+        "-o",
+        "./coverage/",
+    ])
+    os.system(cmd)
+
+    append_cov_data_to_file()
+
+
+@cli.command()
 def test():
     """runs tests and generates cov file(s)"""
     # check flag is set before starting
     os.system('export RUSTFLAGS="-Zinstrument-coverage"')
+    test_cmd = " ".join(["cargo", "test"])
+    os.system(test_cmd)
     cmd = " ".join([
         "grcov",
         ".",

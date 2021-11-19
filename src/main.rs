@@ -89,7 +89,8 @@ fn hatch_subprocess_from_file(filename: &str) -> io::Result<()> {
         status: ProcessStatus::Running,
     };
 
-    add_process_to_state_tracker(child_info).unwrap_or_else(|err| handle_process_boot_error(err));
+    add_process_to_state_tracker(child_info)
+        .unwrap_or_else(|err| errors::handle_process_boot_error(err));
 
     output_display::print_post_hatch_message(pid);
 
@@ -191,7 +192,7 @@ fn stop_process_by_process_identifier(process_identifier: &str) -> io::Result<()
         } else if is_existing_pid(process_identifier) {
             process_identifier.to_string()
         } else {
-            handle_no_such_process_error(process_identifier);
+            errors::handle_no_such_process_error(process_identifier);
         }
     };
 
@@ -290,18 +291,7 @@ fn handle_spawn_error(err_reason: io::Error) -> ! {
     .exit();
 }
 
-fn handle_process_boot_error(err_reason: io::Error) -> ! {
-    Error::with_description(
-        format!(
-            "process abruptly exited after being hatched, details: {}",
-            err_reason
-        ),
-        ErrorKind::Io,
-    )
-    .exit();
-}
-
-fn handle_no_file_data_error() -> ! {
+pub fn handle_no_file_data_error() -> ! {
     Error::with_description(
         format!("no state file data found. Add a process to track first",),
         ErrorKind::Io,
@@ -309,13 +299,46 @@ fn handle_no_file_data_error() -> ! {
     .exit();
 }
 
-fn handle_no_such_process_error(process_info: &str) -> ! {
-    Error::with_description(
-        format!(
-            r#"couldn not stop process. no matching process with identifier: "{}""#,
-            process_info
-        ),
-        ErrorKind::InvalidValue,
-    )
-    .exit();
+mod errors {
+    use clap::{Error, ErrorKind};
+    use std::io;
+
+    pub fn handle_no_such_process_error(process_info: &str) -> ! {
+        Error::with_description(
+            format!(
+                r#"couldn not stop process. no matching process with identifier: "{}""#,
+                process_info
+            ),
+            ErrorKind::InvalidValue,
+        )
+        .exit();
+    }
+
+    pub fn handle_process_boot_error(err_reason: io::Error) -> ! {
+        get_process_boot_error(err_reason).exit();
+    }
+
+    fn get_process_boot_error(err_reason: io::Error) -> Error {
+        Error::with_description(
+            format!(
+                "process abruptly exited after being hatched, details: {}",
+                err_reason
+            ),
+            ErrorKind::Io,
+        )
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::io::ErrorKind;
+
+        #[test]
+        fn process_boot_error_should_return_io_clap_err() {
+            let err_msg = "test io error";
+            let err_reason = io::Error::new(ErrorKind::Other, err_msg);
+            let clap_err = get_process_boot_error(err_reason);
+            assert!(clap_err.to_string().contains(err_msg));
+        }
+    }
 }
