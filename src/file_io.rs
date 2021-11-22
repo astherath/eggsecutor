@@ -60,11 +60,43 @@ fn get_default_state_file_path_string() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid::Uuid;
+
+    struct TestFile<'a> {
+        path: &'a str,
+    }
+
+    impl<'a> Drop for TestFile<'a> {
+        fn drop(&mut self) {
+            fs::remove_file(self.path).expect("file could not be removed while getting dropped");
+        }
+    }
+
+    fn generate_path_string() -> String {
+        format!("{}.testfile", Uuid::new_v4().to_simple())
+    }
+
+    impl<'a> TestFile<'a> {
+        fn touch(path: &'a str, data: &str) -> io::Result<Self> {
+            fs::write(path, data)?;
+            Ok(Self { path })
+        }
+    }
+
+    #[test]
+    fn file_valid_check_should_be_ok_with_existing_file() {
+        let file_path = &generate_path_string();
+        let empty_data = "";
+        touch_file(file_path, empty_data).expect("test file couldnt be created");
+
+        let result = check_if_file_is_valid(file_path);
+        assert!(result.is_ok());
+    }
 
     #[test]
     fn state_file_should_be_created_if_not_exists() {
         // set path to a file that does not exist
-        let file_path = "test-file.json";
+        let file_path = &generate_path_string();
         set_path_to_use(file_path);
 
         // ensure file does not exists prior to call
@@ -83,7 +115,7 @@ mod tests {
     #[test]
     fn state_file_should_not_be_created_if_exists() {
         // create empty file and set path to point to it
-        let file_path = "test-file.json";
+        let file_path = "test-file.testfile";
         let test_data = "test data";
 
         touch_file(file_path, test_data).expect("state file path could not be created");
@@ -96,19 +128,6 @@ mod tests {
         assert_eq!(file_data, test_data.as_bytes());
 
         cleanup_file(file_path);
-    }
-
-    fn touch_file(path_str: &str, data: &str) -> io::Result<()> {
-        fs::write(path_str, data)?;
-        Ok(())
-    }
-
-    fn cleanup_file(path_str: &str) {
-        fs::remove_file(path_str).unwrap();
-    }
-
-    fn set_path_to_use(path_str: &str) {
-        env::set_var(get_state_file_env_key(), path_str);
     }
 
     #[test]
@@ -142,5 +161,18 @@ mod tests {
 
         let state_file_path = get_state_file_path();
         assert_eq!(test_path_value, state_file_path);
+    }
+
+    fn touch_file(path_str: &str, data: &str) -> io::Result<()> {
+        fs::write(path_str, data)?;
+        Ok(())
+    }
+
+    fn cleanup_file(path_str: &str) {
+        fs::remove_file(path_str).unwrap();
+    }
+
+    fn set_path_to_use(path_str: &str) {
+        env::set_var(get_state_file_env_key(), path_str);
     }
 }
