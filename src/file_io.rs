@@ -42,13 +42,7 @@ pub fn create_state_file_if_not_exists() -> io::Result<()> {
 
 fn get_state_file_path() -> String {
     let path_string = match env::var(get_state_file_env_key()) {
-        Ok(state_path) => {
-            if let Err(file_err) = check_if_file_is_valid(&state_path) {
-                // terminate with io error
-                file_err.exit();
-            }
-            state_path
-        }
+        Ok(state_path) => state_path,
         Err(_) => get_default_state_file_path_string(),
     };
 
@@ -84,7 +78,9 @@ mod tests {
         env::remove_var(get_state_file_env_key());
 
         let state_file_path = get_state_file_path();
-        let expected_path = get_default_state_file_path_string();
+
+        // we have to expand the tilde for the path
+        let expected_path = shellexpand::tilde(&get_default_state_file_path_string()).to_string();
 
         assert_eq!(expected_path, state_file_path);
     }
