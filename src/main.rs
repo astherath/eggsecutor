@@ -336,15 +336,10 @@ mod errors {
         use super::*;
         use std::io;
 
-        struct ExpectedErrData<'a> {
-            msg: &'a str,
-            kind: clap::ErrorKind,
-        }
-
-        fn check_err_matches_spec(check_data: ExpectedErrData, err_factory: fn() -> clap::Error) {
-            let err_msg = check_data.msg;
-            let error_kind = check_data.kind;
-
+        fn check_err_matches_spec<F>(err_msg: &str, error_kind: ErrorKind, err_factory: F)
+        where
+            F: FnOnce() -> clap::Error,
+        {
             let clap_err = err_factory();
 
             assert!(clap_err.to_string().contains(err_msg));
@@ -355,21 +350,20 @@ mod errors {
         fn process_boot_error_should_return_io_clap_err() {
             let err_msg = "test io error";
             let kind = clap::ErrorKind::Io;
+
             let io_err = io::Error::new(io::ErrorKind::Other, err_msg);
+            let clap_err_fn = || get_process_boot_error(io_err);
 
-            let err_check_data = ExpectedErrData { kind, msg: err_msg };
-
-            let clap_err_fn = move || get_process_boot_error(io_err);
-
-            check_err_matches_spec(err_check_data, clap_err_fn);
+            check_err_matches_spec(err_msg, kind, clap_err_fn);
         }
 
         #[test]
         fn no_such_process_error_should_return_invalid_value_clap_err() {
             let process_err_msg = "test process not found error";
-            let clap_err = get_no_such_process_error(process_err_msg);
-            assert!(clap_err.to_string().contains(process_err_msg));
-            assert_eq!(clap_err.kind, clap::ErrorKind::InvalidValue);
+            let kind = clap::ErrorKind::InvalidValue;
+
+            let clap_err_fn = || get_no_such_process_error(process_err_msg);
+            check_err_matches_spec(process_err_msg, kind, clap_err_fn);
         }
     }
 }
