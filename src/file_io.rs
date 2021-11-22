@@ -41,16 +41,60 @@ pub fn create_state_file_if_not_exists() -> io::Result<()> {
 }
 
 fn get_state_file_path() -> String {
-    let path_string = match env::var("EGGSECUTOR_STATE_FILE") {
-        Ok(state_path) => state_path,
-        Err(_) => "~/.eggsecutor.state".to_string(),
+    let path_string = match env::var(get_state_file_env_key()) {
+        Ok(state_path) => {
+            if let Err(file_err) = check_if_file_is_valid(&state_path) {
+                // terminate with io error
+                file_err.exit();
+            }
+            state_path
+        }
+        Err(_) => get_default_state_file_path_string(),
     };
 
     shellexpand::tilde(&path_string).to_string()
 }
 
+fn get_state_file_env_key() -> String {
+    "EGGSECUTOR_STATE_FILE".to_string()
+}
+
+fn get_default_state_file_path_string() -> String {
+    "~/.eggsecutor.state".to_string()
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
-    fn pass() {}
+    fn state_file_env_key_should_be_default_value() {
+        let default_env_key = "EGGSECUTOR_STATE_FILE";
+        assert_eq!(default_env_key, &get_state_file_env_key());
+    }
+
+    #[test]
+    fn default_state_file_path_string_should_be_set() {
+        let expected_default_path = "~/.eggsecutor.state";
+        assert_eq!(expected_default_path, &get_default_state_file_path_string());
+    }
+
+    #[test]
+    fn state_file_path_should_return_default_if_env_not_set() {
+        env::remove_var(get_state_file_env_key());
+
+        let state_file_path = get_state_file_path();
+        let expected_path = get_default_state_file_path_string();
+
+        assert_eq!(expected_path, state_file_path);
+    }
+
+    #[test]
+    fn state_file_path_should_return_user_set_path_if_env_key_present() {
+        let test_path_value = "test-dir";
+        env::set_var(get_state_file_env_key(), test_path_value);
+
+        let state_file_path = get_state_file_path();
+        assert_eq!(test_path_value, state_file_path);
+    }
 }
