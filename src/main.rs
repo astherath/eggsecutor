@@ -13,6 +13,7 @@ use std::fs::{self, File};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::{env, io};
+mod errors;
 mod output_display;
 mod subcommands;
 
@@ -80,7 +81,7 @@ fn hatch_subprocess_from_file(filename: &str) -> io::Result<()> {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .unwrap_or_else(|err| handle_spawn_error(err));
+        .unwrap_or_else(|err| errors::handle_spawn_failure(err));
 
     let pid = child.id();
     let child_info = ProcessInfo {
@@ -156,7 +157,7 @@ fn write_processes_to_state_file(processes: Vec<ProcessInfo>) -> io::Result<()> 
 
 fn print_list_of_processes() -> io::Result<()> {
     let processes = get_processes_from_state_file()
-        .unwrap_or_else(|_| handle_no_file_data_error())
+        .unwrap_or_else(|_| errors::handle_no_file_data_error())
         .into_iter()
         .filter(|process| is_process_alive(&process.pid).unwrap())
         .collect();
@@ -277,93 +278,5 @@ fn is_process_alive(pid: &str) -> io::Result<bool> {
     {
         Some(code) => Ok(code == 0),
         None => Ok(false),
-    }
-}
-
-fn handle_spawn_error(err_reason: io::Error) -> ! {
-    Error::with_description(
-        format!(
-            "could not hatch process: binary could not be executed. Details: {}",
-            err_reason
-        ),
-        ErrorKind::Io,
-    )
-    .exit();
-}
-
-pub fn handle_no_file_data_error() -> ! {
-    Error::with_description(
-        format!("no state file data found. Add a process to track first",),
-        ErrorKind::Io,
-    )
-    .exit();
-}
-
-mod errors {
-    use clap::{Error, ErrorKind};
-    use std::io;
-
-    pub fn handle_no_such_process_error(process_info: &str) -> ! {
-        get_no_such_process_error(process_info).exit();
-    }
-
-    fn get_no_such_process_error(process_info: &str) -> Error {
-        Error::with_description(
-            format!(
-                r#"couldn not stop process. no matching process with identifier: "{}""#,
-                process_info
-            ),
-            ErrorKind::InvalidValue,
-        )
-    }
-
-    pub fn handle_process_boot_error(err_reason: io::Error) -> ! {
-        get_process_boot_error(err_reason).exit();
-    }
-
-    fn get_process_boot_error(err_reason: io::Error) -> Error {
-        Error::with_description(
-            format!(
-                "process abruptly exited after being hatched, details: {}",
-                err_reason
-            ),
-            ErrorKind::Io,
-        )
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        use std::io;
-
-        fn check_err_matches_spec<F>(err_msg: &str, error_kind: ErrorKind, err_factory: F)
-        where
-            F: FnOnce() -> clap::Error,
-        {
-            let clap_err = err_factory();
-
-            assert!(clap_err.to_string().contains(err_msg));
-            assert_eq!(clap_err.kind, error_kind);
-        }
-
-        #[test]
-        fn process_boot_error_should_return_io_clap_err() {
-            let err_msg = "test io error";
-            let kind = clap::ErrorKind::Io;
-
-            let io_err = io::Error::new(io::ErrorKind::Other, err_msg);
-            let clap_err_fn = || get_process_boot_error(io_err);
-
-            check_err_matches_spec(err_msg, kind, clap_err_fn);
-        }
-
-        #[test]
-        fn no_such_process_error_should_return_invalid_value_clap_err() {
-            let process_err_msg = "test process not found error";
-            let kind = clap::ErrorKind::InvalidValue;
-
-            let clap_err_fn = || get_no_such_process_error(process_err_msg);
-            check_err_matches_spec(process_err_msg, kind, clap_err_fn);
-        }
     }
 }
