@@ -5,14 +5,11 @@
 extern crate clap;
 extern crate shellexpand;
 
-use clap::{App, AppSettings, Error, ErrorKind};
+use clap::{App, AppSettings};
 use serde::{Deserialize, Serialize};
-use serde_json::{self};
 
-use std::fs::{self, File};
-use std::path::Path;
+use std::io;
 use std::process::{Command, Stdio};
-use std::{env, io};
 mod errors;
 mod output_display;
 mod subcommands;
@@ -55,23 +52,13 @@ fn main() {
 }
 
 fn process_file_input_for_hatch_subcommand(filename: &str) -> io::Result<()> {
-    if let Err(clap_err) = check_if_file_is_valid(filename) {
+    if let Err(clap_err) = file_io::check_if_file_is_valid(filename) {
         clap_err.exit();
     }
 
     hatch_subprocess_from_file(filename)?;
 
     Ok(())
-}
-
-fn check_if_file_is_valid(filename: &str) -> Result<(), Error> {
-    match Path::new(filename).exists() {
-        true => Ok(()),
-        false => Err(Error::with_description(
-            String::from("invalid path to binary: file does not exist or is inaccessible"),
-            ErrorKind::InvalidValue,
-        )),
-    }
 }
 
 fn hatch_subprocess_from_file(filename: &str) -> io::Result<()> {
@@ -121,42 +108,22 @@ impl ProcessInfo {
     }
 }
 
-fn get_state_file_path() -> String {
-    let path_string = match env::var("EGGSECUTOR_STATE_FILE") {
-        Ok(state_path) => state_path,
-        Err(_) => "~/.eggsecutor.state".to_string(),
-    };
-
-    shellexpand::tilde(&path_string).to_string()
-}
-
 fn add_process_to_state_tracker(process_info: ProcessInfo) -> io::Result<()> {
-    let state_file_path = get_state_file_path();
-    if !Path::new(&state_file_path).exists() {
-        File::create(&state_file_path)?;
-    }
+    file_io::create_state_file_if_not_exists()?;
 
-    let mut processes = get_processes_from_state_file()?;
+    let mut processes = file_io::get_processes_from_state_file()?;
 
     // add new process
     processes.push(process_info);
 
     // write info
-    write_processes_to_state_file(processes)?;
-
-    Ok(())
-}
-
-fn write_processes_to_state_file(processes: Vec<ProcessInfo>) -> io::Result<()> {
-    let state_file_path = get_state_file_path();
-    let updated_processes = serde_json::to_string(&processes)?;
-    fs::write(state_file_path, updated_processes.as_bytes())?;
+    file_io::write_processes_to_state_file(processes)?;
 
     Ok(())
 }
 
 fn print_list_of_processes() -> io::Result<()> {
-    let processes = get_processes_from_state_file()
+    let processes = file_io::get_processes_from_state_file()
         .unwrap_or_else(|_| errors::handle_no_file_data_error())
         .into_iter()
         .filter(|process| is_process_alive(&process.pid).unwrap())
@@ -167,20 +134,12 @@ fn print_list_of_processes() -> io::Result<()> {
     Ok(())
 }
 
-fn get_processes_from_state_file() -> io::Result<Vec<ProcessInfo>> {
-    let state_file_path = get_state_file_path();
-    let contents = fs::read_to_string(state_file_path)?;
-    let mut processes: Vec<ProcessInfo> = serde_json::from_str(&contents)?;
-    processes.retain(|process| is_process_alive(&process.pid).unwrap());
-    Ok(processes)
-}
-
 fn remove_process_from_state_tracker(pid: &str) -> io::Result<()> {
     if let Some(_) = find_process_by_pid(pid) {
-        let mut processes = get_processes_from_state_file()?;
+        let mut processes = file_io::get_processes_from_state_file()?;
         processes.retain(|x| x.pid != pid);
 
-        write_processes_to_state_file(processes)?;
+        file_io::write_processes_to_state_file(processes)?;
     }
     Ok(())
 }
@@ -203,7 +162,7 @@ fn stop_process_by_process_identifier(process_identifier: &str) -> io::Result<()
 }
 
 fn find_process_by_name(name: &str) -> Option<ProcessInfo> {
-    for process in get_processes_from_state_file().unwrap() {
+    for process in file_io::get_processes_from_state_file().unwrap() {
         if process.name == name {
             return Some(process);
         }
@@ -212,7 +171,7 @@ fn find_process_by_name(name: &str) -> Option<ProcessInfo> {
 }
 
 fn find_process_by_pid(pid: &str) -> Option<ProcessInfo> {
-    for process in get_processes_from_state_file().unwrap() {
+    for process in file_io::get_processes_from_state_file().unwrap() {
         if process.pid == pid {
             return Some(process);
         }
@@ -231,7 +190,7 @@ fn is_existing_pid(pid: &str) -> bool {
 }
 
 fn is_pid_being_tracked(pid: &str) -> bool {
-    get_processes_from_state_file()
+    file_io::get_processes_from_state_file()
         .unwrap()
         .iter()
         .map(|x| &x.pid)
@@ -253,7 +212,7 @@ fn stop_process_by_pid(pid: &str) -> io::Result<()> {
 }
 
 fn stop_and_clear_all_processes() -> io::Result<()> {
-    get_processes_from_state_file()?
+    file_io::get_processes_from_state_file()?
         .iter()
         .for_each(|x| stop_process_by_pid(&x.pid).unwrap());
     clear_all_processes_from_file()?;
@@ -261,7 +220,7 @@ fn stop_and_clear_all_processes() -> io::Result<()> {
 }
 
 fn clear_all_processes_from_file() -> io::Result<()> {
-    write_processes_to_state_file(vec![])?;
+    file_io::write_processes_to_state_file(vec![])?;
     Ok(())
 }
 
@@ -278,5 +237,64 @@ fn is_process_alive(pid: &str) -> io::Result<bool> {
     {
         Some(code) => Ok(code == 0),
         None => Ok(false),
+    }
+}
+
+mod file_io {
+    use super::errors;
+    use super::ProcessInfo;
+    use clap;
+    use std::env;
+    use std::fs::{self, File};
+    use std::io;
+    use std::path::Path;
+
+    // TODO: this is not a good cross dependency; find fix.
+    use super::is_process_alive;
+
+    pub fn write_processes_to_state_file(processes: Vec<ProcessInfo>) -> io::Result<()> {
+        let state_file_path = get_state_file_path();
+        let updated_processes = serde_json::to_string(&processes)?;
+        fs::write(state_file_path, updated_processes.as_bytes())?;
+
+        Ok(())
+    }
+
+    pub fn get_processes_from_state_file() -> io::Result<Vec<ProcessInfo>> {
+        let state_file_path = get_state_file_path();
+        let contents = fs::read_to_string(state_file_path)?;
+        let mut processes: Vec<ProcessInfo> = serde_json::from_str(&contents)?;
+        processes.retain(|process| is_process_alive(&process.pid).unwrap());
+        Ok(processes)
+    }
+
+    pub fn check_if_file_is_valid(filename: &str) -> Result<(), clap::Error> {
+        match Path::new(filename).exists() {
+            true => Ok(()),
+            false => Err(errors::get_invalid_file_path_error()),
+        }
+    }
+
+    pub fn create_state_file_if_not_exists() -> io::Result<()> {
+        let state_file_path = get_state_file_path();
+        if !Path::new(&state_file_path).exists() {
+            File::create(&state_file_path)?;
+        }
+        Ok(())
+    }
+
+    fn get_state_file_path() -> String {
+        let path_string = match env::var("EGGSECUTOR_STATE_FILE") {
+            Ok(state_path) => state_path,
+            Err(_) => "~/.eggsecutor.state".to_string(),
+        };
+
+        shellexpand::tilde(&path_string).to_string()
+    }
+
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn pass() {}
     }
 }

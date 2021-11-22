@@ -17,6 +17,13 @@ pub fn handle_process_boot_error(err_reason: io::Error) -> ! {
     get_process_boot_error(err_reason).exit();
 }
 
+pub fn get_invalid_file_path_error() -> Error {
+    Error::with_description(
+        "invalid path to binary: file does not exist or is inaccessible".to_string(),
+        ErrorKind::InvalidValue,
+    )
+}
+
 fn get_spawn_failure_error(err_reason: io::Error) -> Error {
     Error::with_description(
         format!(
@@ -95,6 +102,16 @@ mod tests {
         let io_err = get_io_error(process_err_msg);
 
         let clap_err_fn = || get_spawn_failure_error(io_err);
+
+        check_err_matches_spec(process_err_msg, kind, clap_err_fn);
+    }
+
+    #[test]
+    fn invalid_file_path_error_should_return_invalid_value_clap_error() {
+        let kind = ErrorKind::InvalidValue;
+        let process_err_msg = "invalid path to binary: file does not exist or is inaccessible";
+
+        let clap_err_fn = || get_invalid_file_path_error();
 
         check_err_matches_spec(process_err_msg, kind, clap_err_fn);
     }
