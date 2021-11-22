@@ -68,7 +68,9 @@ mod tests {
 
     impl<'a> Drop for TestFile<'a> {
         fn drop(&mut self) {
-            fs::remove_file(self.path).expect("file could not be removed while getting dropped");
+            // we don't actually care if the file can't be removed because a
+            // panic would mean an abort anyway, so the result can be ignored
+            let _result = fs::remove_file(self.path);
         }
     }
 
@@ -77,6 +79,10 @@ mod tests {
     }
 
     impl<'a> TestFile<'a> {
+        fn track(path: &'a str) -> Self {
+            Self { path }
+        }
+
         fn touch(path: &'a str, data: &str) -> io::Result<Self> {
             fs::write(path, data)?;
             Ok(Self { path })
@@ -87,7 +93,8 @@ mod tests {
     fn file_valid_check_should_be_ok_with_existing_file() {
         let file_path = &generate_path_string();
         let empty_data = "";
-        touch_file(file_path, empty_data).expect("test file couldnt be created");
+        let _test_file =
+            TestFile::touch(file_path, empty_data).expect("test file couldnt be created");
 
         let result = check_if_file_is_valid(file_path);
         assert!(result.is_ok());
@@ -102,23 +109,25 @@ mod tests {
         // ensure file does not exists prior to call
         assert!(!Path::new(file_path).exists());
 
+        // start tracking file so we can cleanup after
+        let _test_file = TestFile::track(file_path);
+
         create_state_file_if_not_exists().expect("state file check returned err");
 
         // check file was created and is empty
         assert!(Path::new(file_path).exists());
         let file_data = fs::read(file_path).expect("data could not be read from state file");
         assert!(file_data.is_empty());
-
-        cleanup_file(file_path);
     }
 
     #[test]
     fn state_file_should_not_be_created_if_exists() {
         // create empty file and set path to point to it
-        let file_path = "test-file.testfile";
+        let file_path = &generate_path_string();
         let test_data = "test data";
 
-        touch_file(file_path, test_data).expect("state file path could not be created");
+        let _test_file =
+            TestFile::touch(file_path, test_data).expect("state file path could not be created");
         set_path_to_use(file_path);
 
         create_state_file_if_not_exists().expect("state file check returned err");
@@ -126,8 +135,6 @@ mod tests {
         // check no data was overwritten
         let file_data = fs::read(file_path).expect("data could not be read from state file");
         assert_eq!(file_data, test_data.as_bytes());
-
-        cleanup_file(file_path);
     }
 
     #[test]
@@ -161,15 +168,6 @@ mod tests {
 
         let state_file_path = get_state_file_path();
         assert_eq!(test_path_value, state_file_path);
-    }
-
-    fn touch_file(path_str: &str, data: &str) -> io::Result<()> {
-        fs::write(path_str, data)?;
-        Ok(())
-    }
-
-    fn cleanup_file(path_str: &str) {
-        fs::remove_file(path_str).unwrap();
     }
 
     fn set_path_to_use(path_str: &str) {
