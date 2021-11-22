@@ -62,6 +62,56 @@ mod tests {
     use super::*;
 
     #[test]
+    fn state_file_should_be_created_if_not_exists() {
+        // set path to a file that does not exist
+        let file_path = "test-file.json";
+        set_path_to_use(file_path);
+
+        // ensure file does not exists prior to call
+        assert!(!Path::new(file_path).exists());
+
+        create_state_file_if_not_exists().expect("state file check returned err");
+
+        // check file was created and is empty
+        assert!(Path::new(file_path).exists());
+        let file_data = fs::read(file_path).expect("data could not be read from state file");
+        assert!(file_data.is_empty());
+
+        cleanup_file(file_path);
+    }
+
+    #[test]
+    fn state_file_should_not_be_created_if_exists() {
+        // create empty file and set path to point to it
+        let file_path = "test-file.json";
+        let test_data = "test data";
+
+        touch_file(file_path, test_data).expect("state file path could not be created");
+        set_path_to_use(file_path);
+
+        create_state_file_if_not_exists().expect("state file check returned err");
+
+        // check no data was overwritten
+        let file_data = fs::read(file_path).expect("data could not be read from state file");
+        assert_eq!(file_data, test_data.as_bytes());
+
+        cleanup_file(file_path);
+    }
+
+    fn touch_file(path_str: &str, data: &str) -> io::Result<()> {
+        fs::write(path_str, data)?;
+        Ok(())
+    }
+
+    fn cleanup_file(path_str: &str) {
+        fs::remove_file(path_str).unwrap();
+    }
+
+    fn set_path_to_use(path_str: &str) {
+        env::set_var(get_state_file_env_key(), path_str);
+    }
+
+    #[test]
     fn state_file_env_key_should_be_default_value() {
         let default_env_key = "EGGSECUTOR_STATE_FILE";
         assert_eq!(default_env_key, &get_state_file_env_key());
