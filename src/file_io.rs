@@ -75,15 +75,11 @@ mod tests {
         let process_data = get_valid_process_data();
         set_path_to_use(file_path);
 
-        // let test_file = TestFile::touch(file_path, &process_data)
-        // .expect("test file with process data could not be created");
-
-        fs::write(file_path, &process_data).unwrap();
+        let _test_file = TestFile::touch(file_path, &process_data)
+            .expect("test file with process data could not be created");
 
         let processes = get_all_processes_from_state_file()
             .expect("getting processes from file returned unexpected error");
-
-        fs::remove_file(file_path).unwrap();
 
         assert!(processes.len() > 0);
     }

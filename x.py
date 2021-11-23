@@ -44,9 +44,9 @@ def test(fast: bool):
         rust_flag = ""
     else:
         rust_flag = "-Zinstrument-coverage"
-    os.system(f'export RUSTFLAGS="{rust_flag}"')
+    os.environ["RUSTFLAGS"] = rust_flag
 
-    test_cmd = " ".join(["cargo", "test"])
+    test_cmd = " ".join(["cargo", "test", "--", "--test-threads=1"])
     exit_code = os.system(test_cmd)
 
     if exit_code == 0 and not fast:
