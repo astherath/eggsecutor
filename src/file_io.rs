@@ -1,6 +1,5 @@
 use super::errors;
 use super::ProcessInfo;
-use clap;
 use std::env;
 use std::fs::{self, File};
 use std::io;
