@@ -9,7 +9,9 @@ use std::path::Path;
 // TODO: this is not a good cross dependency; find fix.
 use super::is_process_alive;
 
-pub fn write_processes_to_state_file(processes: Vec<ProcessInfo>) -> io::Result<()> {
+type Processes = Vec<ProcessInfo>;
+
+pub fn write_processes_to_state_file(processes: Processes) -> io::Result<()> {
     let state_file_path = get_state_file_path();
     let updated_processes = serde_json::to_string(&processes)?;
     fs::write(state_file_path, updated_processes.as_bytes())?;
@@ -17,10 +19,8 @@ pub fn write_processes_to_state_file(processes: Vec<ProcessInfo>) -> io::Result<
     Ok(())
 }
 
-pub fn get_processes_from_state_file() -> io::Result<Vec<ProcessInfo>> {
-    let state_file_path = get_state_file_path();
-    let contents = fs::read_to_string(state_file_path)?;
-    let mut processes: Vec<ProcessInfo> = serde_json::from_str(&contents)?;
+pub fn get_running_processes_from_state_file() -> io::Result<Processes> {
+    let mut processes = get_all_processes_from_state_file()?;
     processes.retain(|process| is_process_alive(&process.pid).unwrap());
     Ok(processes)
 }
@@ -38,6 +38,13 @@ pub fn create_state_file_if_not_exists() -> io::Result<()> {
         File::create(&state_file_path)?;
     }
     Ok(())
+}
+
+fn get_all_processes_from_state_file() -> io::Result<Processes> {
+    let state_file_path = get_state_file_path();
+    let contents = fs::read_to_string(state_file_path)?;
+    let processes: Vec<ProcessInfo> = serde_json::from_str(&contents)?;
+    Ok(processes)
 }
 
 fn get_state_file_path() -> String {
@@ -62,31 +69,45 @@ mod tests {
     use super::*;
     use uuid::Uuid;
 
-    struct TestFile<'a> {
-        path: &'a str,
+    #[test]
+    fn getting_processes_from_file_should_be_ok_given_valid_file() {
+        let file_path = &generate_path_string();
+        let process_data = get_valid_process_data();
+        set_path_to_use(file_path);
+
+        // let test_file = TestFile::touch(file_path, &process_data)
+        // .expect("test file with process data could not be created");
+
+        fs::write(file_path, &process_data).unwrap();
+
+        let processes = get_all_processes_from_state_file()
+            .expect("getting processes from file returned unexpected error");
+
+        fs::remove_file(file_path).unwrap();
+
+        assert!(processes.len() > 0);
     }
 
-    impl<'a> Drop for TestFile<'a> {
-        fn drop(&mut self) {
-            // we don't actually care if the file can't be removed because a
-            // panic would mean an abort anyway, so the result can be ignored
-            let _result = fs::remove_file(self.path);
-        }
+    #[test]
+    fn get_processes_from_state_file_should_return_err_if_no_file() {
+        let file_path = &generate_path_string();
+        set_path_to_use(file_path);
+
+        assert!(!Path::new(file_path).exists());
+
+        let result = get_all_processes_from_state_file();
+        assert!(result.is_err());
     }
 
-    fn generate_path_string() -> String {
-        format!("{}.testfile", Uuid::new_v4().to_simple())
-    }
+    // pub fn get_processes_from_state_file() -> io::Result<Vec<ProcessInfo>> {
 
-    impl<'a> TestFile<'a> {
-        fn track(path: &'a str) -> Self {
-            Self { path }
-        }
+    #[test]
+    fn file_valid_check_should_err_with_nonexistent_file_path() {
+        let nonexistent_file_path = &generate_path_string();
+        let result = check_if_file_is_valid(nonexistent_file_path);
 
-        fn touch(path: &'a str, data: &str) -> io::Result<Self> {
-            fs::write(path, data)?;
-            Ok(Self { path })
-        }
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind, clap::ErrorKind::InvalidValue);
     }
 
     #[test]
@@ -170,7 +191,38 @@ mod tests {
         assert_eq!(test_path_value, state_file_path);
     }
 
+    struct TestFile<'a> {
+        path: &'a str,
+    }
+
+    impl<'a> Drop for TestFile<'a> {
+        fn drop(&mut self) {
+            // we don't actually care if the file can't be removed because a
+            // panic would mean an abort anyway, so the result can be ignored
+            let _result = fs::remove_file(self.path);
+        }
+    }
+
+    impl<'a> TestFile<'a> {
+        fn track(path: &'a str) -> Self {
+            Self { path }
+        }
+
+        fn touch(path: &'a str, data: &str) -> io::Result<Self> {
+            fs::write(path, data)?;
+            Ok(Self { path })
+        }
+    }
+
+    fn generate_path_string() -> String {
+        format!("{}.testfile", Uuid::new_v4().to_simple())
+    }
+
     fn set_path_to_use(path_str: &str) {
         env::set_var(get_state_file_env_key(), path_str);
+    }
+
+    fn get_valid_process_data() -> String {
+        r#"[{"name":"TEST_PROCES","pid":"0000","status":"Running"}]"#.to_string()
     }
 }

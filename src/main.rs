@@ -112,7 +112,7 @@ impl ProcessInfo {
 fn add_process_to_state_tracker(process_info: ProcessInfo) -> io::Result<()> {
     file_io::create_state_file_if_not_exists()?;
 
-    let mut processes = file_io::get_processes_from_state_file()?;
+    let mut processes = file_io::get_running_processes_from_state_file()?;
 
     // add new process
     processes.push(process_info);
@@ -124,7 +124,7 @@ fn add_process_to_state_tracker(process_info: ProcessInfo) -> io::Result<()> {
 }
 
 fn print_list_of_processes() -> io::Result<()> {
-    let processes = file_io::get_processes_from_state_file()
+    let processes = file_io::get_running_processes_from_state_file()
         .unwrap_or_else(|_| errors::handle_no_file_data_error())
         .into_iter()
         .filter(|process| is_process_alive(&process.pid).unwrap())
@@ -137,7 +137,7 @@ fn print_list_of_processes() -> io::Result<()> {
 
 fn remove_process_from_state_tracker(pid: &str) -> io::Result<()> {
     if let Some(_) = find_process_by_pid(pid) {
-        let mut processes = file_io::get_processes_from_state_file()?;
+        let mut processes = file_io::get_running_processes_from_state_file()?;
         processes.retain(|x| x.pid != pid);
 
         file_io::write_processes_to_state_file(processes)?;
@@ -163,7 +163,7 @@ fn stop_process_by_process_identifier(process_identifier: &str) -> io::Result<()
 }
 
 fn find_process_by_name(name: &str) -> Option<ProcessInfo> {
-    for process in file_io::get_processes_from_state_file().unwrap() {
+    for process in file_io::get_running_processes_from_state_file().unwrap() {
         if process.name == name {
             return Some(process);
         }
@@ -172,7 +172,7 @@ fn find_process_by_name(name: &str) -> Option<ProcessInfo> {
 }
 
 fn find_process_by_pid(pid: &str) -> Option<ProcessInfo> {
-    for process in file_io::get_processes_from_state_file().unwrap() {
+    for process in file_io::get_running_processes_from_state_file().unwrap() {
         if process.pid == pid {
             return Some(process);
         }
@@ -191,7 +191,7 @@ fn is_existing_pid(pid: &str) -> bool {
 }
 
 fn is_pid_being_tracked(pid: &str) -> bool {
-    file_io::get_processes_from_state_file()
+    file_io::get_running_processes_from_state_file()
         .unwrap()
         .iter()
         .map(|x| &x.pid)
@@ -213,7 +213,7 @@ fn stop_process_by_pid(pid: &str) -> io::Result<()> {
 }
 
 fn stop_and_clear_all_processes() -> io::Result<()> {
-    file_io::get_processes_from_state_file()?
+    file_io::get_running_processes_from_state_file()?
         .iter()
         .for_each(|x| stop_process_by_pid(&x.pid).unwrap());
     clear_all_processes_from_file()?;

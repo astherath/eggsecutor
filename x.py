@@ -36,14 +36,20 @@ def cov():
 
 
 @cli.command()
-def test():
+@click.option("-f", "--fast", required=False, is_flag=True)
+def test(fast: bool):
     """runs tests and generates cov file(s)"""
     # check flag is set before starting
-    os.system('export RUSTFLAGS="-Zinstrument-coverage"')
+    if fast:
+        rust_flag = ""
+    else:
+        rust_flag = "-Zinstrument-coverage"
+    os.system(f'export RUSTFLAGS="{rust_flag}"')
+
     test_cmd = " ".join(["cargo", "test"])
     exit_code = os.system(test_cmd)
 
-    if exit_code == 0:
+    if exit_code == 0 and not fast:
         run_grcov_cmd()
         append_cov_data_to_file()
 
