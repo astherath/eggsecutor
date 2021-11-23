@@ -70,14 +70,58 @@ mod tests {
     use uuid::Uuid;
 
     #[test]
+    fn writing_empty_process_vec_to_state_file_should_overwrite_current_data() {
+        let file_path = &generate_path_string();
+        set_path_to_use(file_path);
+        let process_data = get_valid_process_data();
+
+        let _test_file = TestFile::touch(file_path, &process_data);
+
+        // make sure data was written in the first place
+        let old_file_data = read_file_data(file_path);
+        assert_eq!(old_file_data, process_data);
+
+        let empty_processes = vec![];
+        let result = write_processes_to_state_file(empty_processes);
+
+        assert!(result.is_ok());
+
+        // new data should overwrite old data
+        let new_file_data = read_file_data(file_path);
+        let expected_empty_process_list_data = "[]";
+        assert_eq!(new_file_data, expected_empty_process_list_data);
+    }
+
+    #[test]
+    fn writing_empty_process_vec_to_state_file_should_be_ok_if_file_does_not_exist() {
+        let file_path = &generate_path_string();
+        set_path_to_use(file_path);
+        let empty_processes = vec![];
+
+        let _test_file = TestFile::track(file_path);
+
+        let result = write_processes_to_state_file(empty_processes);
+
+        assert!(result.is_ok());
+
+        let file_data = read_file_data(file_path);
+        let expected_empty_process_list_data = "[]";
+        assert_eq!(file_data, expected_empty_process_list_data);
+    }
+
+    #[test]
     fn get_running_processes_should_return_empty_if_no_process_alive() {
         let file_path = &generate_path_string();
         set_path_to_use(file_path);
+        let empty_process_data = "[]";
 
-        assert!(!Path::new(file_path).exists());
+        let _test_file = TestFile::touch(file_path, &empty_process_data)
+            .expect("test file with process data could not be created");
 
-        let result = get_running_processes_from_state_file();
-        assert!(result.is_err());
+        let processes = get_running_processes_from_state_file()
+            .expect("getting processes from file returned unexpected error");
+
+        assert!(processes.is_empty());
     }
 
     #[test]
@@ -168,7 +212,7 @@ mod tests {
 
         // check file was created and is empty
         assert!(Path::new(file_path).exists());
-        let file_data = fs::read(file_path).expect("data could not be read from state file");
+        let file_data = read_file_data(file_path);
         assert!(file_data.is_empty());
     }
 
@@ -185,8 +229,8 @@ mod tests {
         create_state_file_if_not_exists().expect("state file check returned err");
 
         // check no data was overwritten
-        let file_data = fs::read(file_path).expect("data could not be read from state file");
-        assert_eq!(file_data, test_data.as_bytes());
+        let file_data = read_file_data(file_path);
+        assert_eq!(file_data, test_data);
     }
 
     #[test]
@@ -255,5 +299,10 @@ mod tests {
 
     fn get_valid_process_data() -> String {
         r#"[{"name":"TEST_PROCES","pid":"0000","status":"Running"}]"#.to_string()
+    }
+
+    fn read_file_data(path: &str) -> String {
+        String::from_utf8(fs::read(path).expect("data could not be read from state file"))
+            .expect("error casting bytes to string from state file")
     }
 }
