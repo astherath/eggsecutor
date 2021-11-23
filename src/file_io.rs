@@ -70,6 +70,43 @@ mod tests {
     use uuid::Uuid;
 
     #[test]
+    fn get_running_processes_should_return_empty_if_no_process_alive() {
+        let file_path = &generate_path_string();
+        set_path_to_use(file_path);
+
+        assert!(!Path::new(file_path).exists());
+
+        let result = get_running_processes_from_state_file();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn get_running_processes_should_return_err_if_no_file_found() {
+        let file_path = &generate_path_string();
+        set_path_to_use(file_path);
+
+        assert!(!Path::new(file_path).exists());
+
+        let result = get_running_processes_from_state_file();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn getting_processes_should_return_empty_vec_if_file_empty() {
+        let file_path = &generate_path_string();
+        let empty_process_data = "[]";
+        set_path_to_use(file_path);
+
+        let _test_file = TestFile::touch(file_path, &empty_process_data)
+            .expect("test file with process data could not be created");
+
+        let processes = get_all_processes_from_state_file()
+            .expect("getting processes from file returned unexpected error");
+
+        assert_eq!(processes.len(), 0);
+    }
+
+    #[test]
     fn getting_processes_from_file_should_be_ok_given_valid_file() {
         let file_path = &generate_path_string();
         let process_data = get_valid_process_data();
@@ -94,8 +131,6 @@ mod tests {
         let result = get_all_processes_from_state_file();
         assert!(result.is_err());
     }
-
-    // pub fn get_processes_from_state_file() -> io::Result<Vec<ProcessInfo>> {
 
     #[test]
     fn file_valid_check_should_err_with_nonexistent_file_path() {
