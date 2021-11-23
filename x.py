@@ -37,8 +37,9 @@ def cov():
 
 @cli.command()
 @click.option("-f", "--fast", required=False, is_flag=True)
-@click.option("-e", "--exact", required=False, is_flag=False, type=str)
-def test(fast: bool, exact: str):
+@click.option("-n", "--name", required=False, is_flag=False, type=str)
+@click.option("-e", "--exact", required=False, is_flag=True)
+def test(fast: bool, name: str, exact: bool):
     """runs tests and generates cov file(s)"""
     # check flag is set before starting
     if fast:
@@ -47,25 +48,26 @@ def test(fast: bool, exact: str):
         rust_flag = "-Zinstrument-coverage"
     os.environ["RUSTFLAGS"] = rust_flag
 
-    if exact:
-        args = ["--exact"]
-        exit_code = run_tests(exact=exact, args=args)
-    else:
-        exit_code = run_tests()
+    args = []
 
-    if exit_code == 0 and not (fast or exact):
+    if exact:
+        args.append("--exact")
+
+    exit_code = run_tests(named=name, args=args)
+
+    should_gen_cov = exit_code == 0 and not any([fast, exact, name])
+    if should_gen_cov:
         run_grcov_cmd()
         append_cov_data_to_file()
 
 
-def run_tests(exact=None, args=None) -> int:
+def run_tests(named=None, args=None) -> int:
     cmd = ["cargo", "test", "--", "--test-threads=1"]
-    if exact:
-        cmd.insert(2, exact)
+    if named:
+        cmd.insert(2, named)
     if args:
         cmd.extend(args)
     final_cmd = " ".join(cmd)
-    print(final_cmd)
     return os.system(final_cmd)
 
 
