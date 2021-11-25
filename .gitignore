@@ -1,2 +1,6 @@
 /target
 ~
+*.profraw
+coverage/
+*.testfile
+TEST

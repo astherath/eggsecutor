@@ -1,0 +1,26 @@
+name: Rust
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install and switch to nightly
+      run: rustup toolchain install nightly && rustup default nightly
+    - name: Install linter (clippy)
+      run: rustup component add clippy
+    - name: Run clippy
+      run: cargo clippy -- -D warnings
+    - name: Run tests
+      run: cargo test --verbose -- --test-threads=1
