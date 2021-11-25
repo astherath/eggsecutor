@@ -33,15 +33,15 @@ fn main() {
     let matches = app.get_matches();
 
     // get matches and execute commands here
-    if let Some(ref matches) = matches.subcommand_matches("hatch") {
+    if let Some(matches) = matches.subcommand_matches("hatch") {
         if let Some(filename) = matches.value_of("file") {
             process_file_input_for_hatch_subcommand(filename).unwrap();
         }
-    } else if let Some(ref matches) = matches.subcommand_matches("stop") {
+    } else if let Some(matches) = matches.subcommand_matches("stop") {
         if let Some(process_identifier) = matches.value_of("process identifier") {
             stop_process_by_process_identifier(process_identifier).unwrap();
         }
-    } else if let Some(_) = matches.subcommand_matches("list") {
+    } else if matches.subcommand_matches("list").is_some() {
         print_list_of_processes().unwrap();
     } else if let Some(matches) = matches.subcommand_matches("clear") {
         if matches.is_present("only-clear") {
@@ -136,7 +136,7 @@ fn print_list_of_processes() -> io::Result<()> {
 }
 
 fn remove_process_from_state_tracker(pid: &str) -> io::Result<()> {
-    if let Some(_) = find_process_by_pid(pid) {
+    if find_process_by_pid(pid).is_some() {
         let mut processes = file_io::get_running_processes_from_state_file()?;
         processes.retain(|x| x.pid != pid);
 
@@ -195,8 +195,7 @@ fn is_pid_being_tracked(pid: &str) -> bool {
         .unwrap()
         .iter()
         .map(|x| &x.pid)
-        .find(|x| x == &pid)
-        .is_some()
+        .any(|x| *x == pid)
 }
 
 fn stop_process_by_pid(pid: &str) -> io::Result<()> {

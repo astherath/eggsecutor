@@ -18,11 +18,9 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install and switch to nightly
       run: rustup toolchain install nightly && rustup default nightly
-    - name: Install python cli deps
-      run: rustup toolchain install nightly && rustup default nightly
-    - name: Run tests
-      run: cargo test --verbose
     - name: Install linter (clippy)
       run: rustup component add clippy
     - name: Run clippy
       run: cargo clippy -- -D warnings
+    - name: Run tests
+      run: cargo test --verbose -- --test-threads=1

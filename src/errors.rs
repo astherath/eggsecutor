@@ -36,7 +36,7 @@ fn get_spawn_failure_error(err_reason: io::Error) -> Error {
 
 fn get_no_file_data_error() -> Error {
     Error::with_description(
-        format!("no state file data found. Add a process to track first",),
+        "no state file data found. Add a process to track first".to_string(),
         ErrorKind::Io,
     )
 }
