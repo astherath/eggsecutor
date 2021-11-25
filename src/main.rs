@@ -2,6 +2,8 @@
 // but the beta version does, so we technically use the
 // deprecated functions to the same effect.
 #![allow(deprecated)]
+// our closures actually -> !, so they can't be unwrapped easily
+#![allow(clippy::redundant_closure)]
 extern crate clap;
 extern crate shellexpand;
 
