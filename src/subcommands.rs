@@ -15,7 +15,7 @@ fn get_clear_state_subcommand<'a>() -> App<'a> {
     App::new(SUBCOMMAND_NAME).about(ABOUT).arg(
         Arg::new("only-clear")
             .long("--only-clear")
-            .about("don't stop any processes, just clear the tracking list"),
+            .help("don't stop any processes, just clear the tracking list"),
     )
 }
 
@@ -25,7 +25,7 @@ fn get_stop_process_subcommand<'a>() -> App<'a> {
 
     App::new(SUBCOMMAND_NAME).about(ABOUT).arg(
         Arg::new("process identifier")
-            .about("Name or pid of process to stop")
+            .help("Name or pid of process to stop")
             .required(true)
             .takes_value(true)
             .value_name("PROCESS_IDENTIFIER"),
@@ -45,7 +45,7 @@ fn get_hatch_subcommand<'a>() -> App<'a> {
 
     App::new(SUBCOMMAND_NAME).about(ABOUT).arg(
         Arg::new("file")
-            .about("Sets the input file to use")
+            .help("Sets the input file to use")
             .required(true)
             .takes_value(true)
             .value_name("INPUT"),
@@ -146,7 +146,7 @@ mod tests {
                 .expect("arg iterator should return valid argument");
 
             assert_eq!(arg.get_name(), expected_arg_name);
-            assert_eq!(arg.get_about().unwrap(), expected_arg_about);
+            assert_eq!(arg.get_help().unwrap(), expected_arg_about);
         }
     }
 
